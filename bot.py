@@ -14,7 +14,7 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 # ========== КОНФИГУРАЦИЯ ==========
 GROUP_TOKEN = os.environ.get("VK_TOKEN", "vk1.a.qUyg4SYpR2414W6nHk3hZB4ggpljiji-rBo3P2TBcXlmuEc-jOtXEc_T5BqoKGcIExwbmn5nAyEUTh5NkMMdqVb2qumib8fjaA2JrW1MUBbTyptBks0Khp4QgzvER2gGm9U485X1rnIQ3B3S4lu_BmGFf_tsO6zY5Slr2kC6x5GcKR5C1xzl-CqoTytONqeUyw8RUYys0RQSD7DOaSZQSg")
 GROUP_ID = int(os.environ.get("VK_GROUP_ID", 237951367))
-ADMIN_IDS = [int(os.environ.get("ADMIN_ID", 123456789))]
+ADMIN_IDS = [int(os.environ.get("ADMIN_ID", 1024252142))]
 
 # ========== ЛИМИТЫ ==========
 BOSS_DAILY_LIMIT = 6
