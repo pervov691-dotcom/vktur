@@ -29,7 +29,11 @@ FREE_WEAPON_COOLDOWN = 10
 # ========== ВРЕМЯ НА РЕЙД ==========
 RAID_TIME_LIMITS = {1: 1, 2: 2, 3: 3, 4: 5, 5: 8, 6: 12, 7: 18, 8: 24}
 
-# ========== МОНСТРЫ (БОССЫ) ==========
+# ========== НАСТРОЙКИ ОГРАНИЧЕНИЙ ==========
+WEAPON_LEVEL_REQUIRED = False   # False - оружие можно купить с 1 уровня
+MONSTER_LEVEL_REQUIRED = True   # True - монстры требуют уровень
+
+# ========== МОНСТРЫ ==========
 MONSTERS = {
     1: {"id": 1, "name": "🐗 Дикий вепрь", "hp": 1000, "reward_gold": (500, 1000), "reward_honor": (10, 20), "reward_xp": (50, 100), "min_level": 1},
     2: {"id": 2, "name": "🌿 Леший", "hp": 2000, "reward_gold": (1000, 2000), "reward_honor": (20, 40), "reward_xp": (100, 200), "min_level": 3},
@@ -62,7 +66,7 @@ JOBS = {
     8: {"name": "💎 Королевский советник", "earn": 10000, "min_level": 30}
 }
 
-# ========== РАНГИ (ЗВАНИЯ) ==========
+# ========== ЗВАНИЯ ==========
 RANKS = {
     0: {"name": "🪶 Сквайр", "honor_needed": 0},
     1: {"name": "🗡️ Оруженосец", "honor_needed": 50},
@@ -427,7 +431,7 @@ def handle_start(user_id, referrer_id=None):
         "📜 Личное дело - твоё досье\n"
         "⚔️ Охота - битва с монстрами\n"
         "💼 Работа - зарабатывай золото\n"
-        "🏪 Торговец - купи оружие\n"
+        "🏪 Торговец - купи оружие (доступно с 1 уровня!)\n"
         "📦 Сундук - твоё снаряжение\n"
         "🏆 Рейтинг - топ воинов\n"
         "🍺 Трактир - халявное золото (раз в 6ч)\n"
@@ -484,7 +488,10 @@ def handle_monster_list(user_id):
     message = "⚔️ НА КОГО ОХОТИМСЯ?\n\n"
     for monster_id, monster in MONSTERS.items():
         current_hp = get_monster_hp(monster_id)
-        req = "✅" if stats['level'] >= monster['min_level'] else f"🔒 УР.{monster['min_level']}"
+        if MONSTER_LEVEL_REQUIRED and stats['level'] < monster['min_level']:
+            req = f"🔒 УР.{monster['min_level']}"
+        else:
+            req = "✅"
         filled = int((current_hp / monster['hp']) * 10)
         bar = "█" * filled + "░" * (10 - filled)
         kills_today = get_monster_kills_today(user_id, monster_id)
@@ -513,9 +520,11 @@ def handle_monster_selection(user_id, monster_name):
     if not monster_data:
         send_message(user_id, "❌ Такого монстра нет!", create_main_keyboard())
         return
-    if stats['level'] < monster_data['min_level']:
+    
+    if MONSTER_LEVEL_REQUIRED and stats['level'] < monster_data['min_level']:
         send_message(user_id, f"❌ Нужен {monster_data['min_level']} уровень!", create_main_keyboard())
         return
+    
     user_states[user_id] = {'state': 'fighting', 'monster_id': monster_id, 'monster_name': monster_data['name']}
     current_hp = get_monster_hp(monster_id)
     kills_today = get_monster_kills_today(user_id, monster_id)
@@ -690,9 +699,10 @@ def handle_shop(user_id):
     for weapon_id, weapon in WEAPONS.items():
         if weapon['price'] > 0:
             message += f"{weapon['emoji']} {weapon['name']}\n"
-            message += f"   💰 {weapon['price']} | ⚔️ +{weapon['damage']} | УР.{weapon['min_level']}\n"
+            message += f"   💰 {weapon['price']} | ⚔️ +{weapon['damage']}\n"
             message += f"   💥 Шанс крита: {weapon['crit_chance']}%\n\n"
-    message += "👉 Напиши номер оружия:\n2 - Кинжал, 3 - Длинный меч, 4 - Арбалет, 5 - Королевский меч"
+    message += "👉 Напиши номер оружия:\n2 - Кинжал, 3 - Длинный меч, 4 - Арбалет, 5 - Королевский меч\n\n"
+    message += "✨ Покупать можно с 1 уровня! Нет ограничений!"
     send_message(user_id, message, create_shop_keyboard())
     user_states[user_id] = {'state': 'buying'}
 
@@ -709,23 +719,23 @@ def handle_buy_weapon(user_id, weapon_choice):
         if user_id in user_states:
             del user_states[user_id]
         return
+    
     weapon_data = WEAPONS[weapon_id]
     stats = get_hero_stats(user_id)
-    if stats['level'] < weapon_data['min_level']:
-        send_message(user_id, f"❌ Нужен {weapon_data['min_level']} уровень!", create_main_keyboard())
-        if user_id in user_states:
-            del user_states[user_id]
-        return
+    
+    # Проверка уровня для покупки оружия - УДАЛЕНА! Можно покупать с 1 уровня
+    
     if stats['gold'] < weapon_data['price']:
-        send_message(user_id, f"❌ Не хватает! Нужно {weapon_data['price']}💰", create_main_keyboard())
+        send_message(user_id, f"❌ Не хватает! Нужно {weapon_data['price']}💰\n💰 У тебя: {stats['gold']}", create_main_keyboard())
         if user_id in user_states:
             del user_states[user_id]
         return
+    
     add_weapon_to_inventory(user_id, weapon_id)
     add_gold(user_id, -weapon_data['price'])
     weapons_inv = get_user_weapons(user_id)
     current_count = weapons_inv.get(str(weapon_id), 0)
-    send_message(user_id, f"✅ Куплено {weapon_data['emoji']} {weapon_data['name']}!\n💰 Потрачено: {weapon_data['price']} монет\n📦 Теперь у тебя: {current_count} шт.", create_main_keyboard())
+    send_message(user_id, f"✅ Куплено {weapon_data['emoji']} {weapon_data['name']}!\n💰 Потрачено: {weapon_data['price']} монет\n📦 Теперь в сундуке: {current_count} шт.", create_main_keyboard())
     if user_id in user_states:
         del user_states[user_id]
 
@@ -972,6 +982,63 @@ def handle_raid_stats(user_id):
             message += f"👑 Создатель: {get_user_name(raid['creator'])}\n\n"
         send_message(user_id, message, create_main_keyboard())
 
+def handle_shop_in_raid(user_id):
+    stats = get_hero_stats(user_id)
+    if not stats:
+        handle_start(user_id)
+        return
+    message = f"🏪 ТОРГОВЕЦ (Прямо во время боя!)\n💰 Золота: {stats['gold']}\n\n"
+    message += "2. 🗡️ Кинжал - 1000💰 (урон +15, крит 30%)\n"
+    message += "3. ⚔️ Длинный меч - 5000💰 (урон +35, крит 35%)\n"
+    message += "4. 🏹 Арбалет - 20000💰 (урон +80, крит 40%)\n"
+    message += "5. 👑 Королевский меч - 50000💰 (урон +160, крит 50%)\n\n"
+    message += "👉 Напиши номер оружия для покупки:\n"
+    message += "2 - Кинжал\n"
+    message += "3 - Длинный меч\n"
+    message += "4 - Арбалет\n"
+    message += "5 - Королевский меч\n\n"
+    message += "✨ Покупать можно с 1 уровня! Нет ограничений!\n\n"
+    message += "💡 После покупки продолжишь бой!"
+    send_message(user_id, message, create_back_keyboard())
+    user_states[user_id] = {'state': 'buying_in_raid'}
+
+def handle_buy_weapon_in_raid(user_id, weapon_choice):
+    try:
+        weapon_id = int(weapon_choice)
+        if weapon_id not in [2, 3, 4, 5]:
+            send_message(user_id, "❌ Доступные номера: 2, 3, 4, 5", create_fight_keyboard())
+            del user_states[user_id]
+            return
+    except:
+        send_message(user_id, "❌ Напиши номер оружия: 2, 3, 4 или 5", create_fight_keyboard())
+        del user_states[user_id]
+        return
+    weapon_data = WEAPONS[weapon_id]
+    stats = get_hero_stats(user_id)
+    raid_code = user_states[user_id].get('raid_code')
+    
+    # Проверка уровня для покупки оружия - УДАЛЕНА! Можно покупать с 1 уровня
+    
+    if stats['gold'] < weapon_data['price']:
+        send_message(user_id, f"❌ Не хватает! Нужно {weapon_data['price']}💰\n💰 У тебя: {stats['gold']}", create_fight_keyboard())
+        del user_states[user_id]
+        return
+    add_weapon_to_inventory(user_id, weapon_id)
+    add_gold(user_id, -weapon_data['price'])
+    if raid_code and raid_code in active_raids:
+        raid = active_raids[raid_code]
+        remaining = raid['time_limit_hours'] - (datetime.now() - raid['start_time']).total_seconds() / 3600
+        remaining_text = f"{int(remaining)}ч {int((remaining % 1) * 60)}мин" if remaining > 0 else "Время истекло"
+        weapons_inv = get_user_weapons(user_id)
+        current_count = weapons_inv.get(str(weapon_id), 0)
+        msg = f"✅ Куплено {weapon_data['emoji']} {weapon_data['name']}!\n💰 Потрачено: {weapon_data['price']} монет\n📦 Теперь в сундуке: {current_count} шт.\n\n"
+        msg += f"⚔️ ВОЗВРАЩЕНИЕ В БОЙ!\n🐉 Цель: {raid['monster_name']}\n❤️ ХП: {raid['monster_current_hp']}/{raid['monster_max_hp']}\n⏰ Осталось: {remaining_text}\n\n👉 ПРОДОЛЖАЙ АТАКУ!"
+        user_states[user_id] = {'state': 'raid_attacking', 'raid_code': raid_code}
+        send_message(user_id, msg, create_fight_keyboard())
+    else:
+        send_message(user_id, f"✅ Куплено {weapon_data['emoji']} {weapon_data['name']}!\n💰 Потрачено: {weapon_data['price']} монет", create_main_keyboard())
+        del user_states[user_id]
+
 def handle_raid_attack(user_id, weapon_text):
     if user_id not in user_states:
         for rcode, raid in active_raids.items():
@@ -1144,70 +1211,13 @@ def handle_raid_attack(user_id, weapon_text):
     send_message(user_id, message, create_fight_keyboard())
     return True
 
-def handle_shop_in_raid(user_id):
-    stats = get_hero_stats(user_id)
-    if not stats:
-        handle_start(user_id)
-        return
-    message = f"🏪 ТОРГОВЕЦ (Прямо во время боя!)\n💰 Золота: {stats['gold']}\n\n"
-    message += "2. 🗡️ Кинжал - 1000💰 (урон +15, УР.3, крит 30%)\n"
-    message += "3. ⚔️ Длинный меч - 5000💰 (урон +35, УР.8, крит 35%)\n"
-    message += "4. 🏹 Арбалет - 20000💰 (урон +80, УР.15, крит 40%)\n"
-    message += "5. 👑 Королевский меч - 50000💰 (урон +160, УР.25, крит 50%)\n\n"
-    message += "👉 Напиши номер оружия для покупки:\n"
-    message += "2 - Кинжал\n"
-    message += "3 - Длинный меч\n"
-    message += "4 - Арбалет\n"
-    message += "5 - Королевский меч\n\n"
-    message += "💡 После покупки продолжишь бой!"
-    send_message(user_id, message, create_back_keyboard())
-    user_states[user_id] = {'state': 'buying_in_raid'}
-
-def handle_buy_weapon_in_raid(user_id, weapon_choice):
-    try:
-        weapon_id = int(weapon_choice)
-        if weapon_id not in [2, 3, 4, 5]:
-            send_message(user_id, "❌ Доступные номера: 2, 3, 4, 5", create_fight_keyboard())
-            del user_states[user_id]
-            return
-    except:
-        send_message(user_id, "❌ Напиши номер оружия: 2, 3, 4 или 5", create_fight_keyboard())
-        del user_states[user_id]
-        return
-    weapon_data = WEAPONS[weapon_id]
-    stats = get_hero_stats(user_id)
-    raid_code = user_states[user_id].get('raid_code')
-    if stats['level'] < weapon_data['min_level']:
-        send_message(user_id, f"❌ Нужен {weapon_data['min_level']} уровень!", create_fight_keyboard())
-        del user_states[user_id]
-        return
-    if stats['gold'] < weapon_data['price']:
-        send_message(user_id, f"❌ Не хватает! Нужно {weapon_data['price']}💰\n💰 У тебя: {stats['gold']}", create_fight_keyboard())
-        del user_states[user_id]
-        return
-    add_weapon_to_inventory(user_id, weapon_id)
-    add_gold(user_id, -weapon_data['price'])
-    if raid_code and raid_code in active_raids:
-        raid = active_raids[raid_code]
-        remaining = raid['time_limit_hours'] - (datetime.now() - raid['start_time']).total_seconds() / 3600
-        remaining_text = f"{int(remaining)}ч {int((remaining % 1) * 60)}мин" if remaining > 0 else "Время истекло"
-        weapons_inv = get_user_weapons(user_id)
-        current_count = weapons_inv.get(str(weapon_id), 0)
-        msg = f"✅ Куплено {weapon_data['emoji']} {weapon_data['name']}!\n💰 Потрачено: {weapon_data['price']} монет\n📦 Теперь в сундуке: {current_count} шт.\n\n"
-        msg += f"⚔️ ВОЗВРАЩЕНИЕ В БОЙ!\n🐉 Цель: {raid['monster_name']}\n❤️ ХП: {raid['monster_current_hp']}/{raid['monster_max_hp']}\n⏰ Осталось: {remaining_text}\n\n👉 ПРОДОЛЖАЙ АТАКУ!"
-        user_states[user_id] = {'state': 'raid_attacking', 'raid_code': raid_code}
-        send_message(user_id, msg, create_fight_keyboard())
-    else:
-        send_message(user_id, f"✅ Куплено {weapon_data['emoji']} {weapon_data['name']}!\n💰 Потрачено: {weapon_data['price']} монет", create_main_keyboard())
-        del user_states[user_id]
-
 def handle_help(user_id):
     message = """⚔️ КОРОЛЕВСТВО - ПОМОЩЬ ⚔️
 
 📜 Личное дело - твоё досье
 ⚔️ Охота - соло битва с монстром
 💼 Работа - фармим золото
-🏪 Торговец - купить оружие
+🏪 Торговец - купить оружие (доступно с 1 уровня!)
 📦 Сундук - твоё снаряжение
 🏆 Рейтинг - топ воинов
 🍺 Трактир - халявное золото (раз в 6ч)
