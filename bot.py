@@ -27,11 +27,19 @@ DAILY_BONUS_COOLDOWN = 21600
 FREE_WEAPON_COOLDOWN = 10
 
 # ========== ВРЕМЯ НА РЕЙД ==========
-RAID_TIME_LIMITS = {1: 1, 2: 2, 3: 3, 4: 5, 5: 8, 6: 12, 7: 18, 8: 24}
+RAID_TIME_LIMITS = {1: 1, 2: 2, 3: 3, 4: 5, 5: 8, 6: 12, 7: 18, 8: 24, 101: 0, 102: 0, 103: 0, 104: 0, 105: 0, 106: 0, 107: 0, 108: 0}
 
 # ========== НАСТРОЙКИ ОГРАНИЧЕНИЙ ==========
 WEAPON_LEVEL_REQUIRED = False   # False - оружие можно купить с 1 уровня
 MONSTER_LEVEL_REQUIRED = True   # True - монстры требуют уровень
+
+# ========== КЛАССЫ ПЕРСОНАЖЕЙ ==========
+CLASSES = {
+    1: {"id": 1, "name": "⚔️ Воин", "hp": 120, "attack": 15, "defense": 8, "weapon": "Меч", "emoji": "🛡️", "start_weapon": 2, "start_weapon_count": 2},
+    2: {"id": 2, "name": "🏹 Лучник", "hp": 100, "attack": 20, "defense": 5, "weapon": "Лук", "emoji": "🌲", "start_weapon": 2, "start_weapon_count": 2},
+    3: {"id": 3, "name": "🔮 Маг", "hp": 90, "attack": 22, "defense": 4, "weapon": "Посох", "emoji": "✨", "start_weapon": 2, "start_weapon_count": 2},
+    4: {"id": 4, "name": "🗡️ Ассасин", "hp": 95, "attack": 25, "defense": 3, "weapon": "Два кинжала", "emoji": "💨", "start_weapon": 2, "start_weapon_count": 2}
+}
 
 # ========== МОНСТРЫ ==========
 MONSTERS = {
@@ -44,6 +52,20 @@ MONSTERS = {
     7: {"id": 7, "name": "⚔️ Древний воин", "hp": 18000, "reward_gold": (20000, 35000), "reward_honor": (350, 600), "reward_xp": (1800, 3000), "min_level": 25},
     8: {"id": 8, "name": "💀 Властелин зла", "hp": 25000, "reward_gold": (35000, 60000), "reward_honor": (600, 1000), "reward_xp": (3000, 5000), "min_level": 30}
 }
+
+# ========== СЛАБЫЕ МОБЫ (НАСЕКОМЫЕ) ==========
+SLIME_MONSTERS = {
+    1: {"id": 101, "name": "🐜 Муравей", "hp": 10, "reward_gold": (1, 5), "reward_honor": (1, 1), "reward_xp": (1, 3), "min_level": 1},
+    2: {"id": 102, "name": "🐛 Гусеница", "hp": 15, "reward_gold": (2, 8), "reward_honor": (1, 2), "reward_xp": (2, 5), "min_level": 1},
+    3: {"id": 103, "name": "🐀 Крыса", "hp": 25, "reward_gold": (5, 15), "reward_honor": (2, 3), "reward_xp": (3, 8), "min_level": 1},
+    4: {"id": 104, "name": "🕷️ Паук", "hp": 40, "reward_gold": (8, 20), "reward_honor": (2, 4), "reward_xp": (5, 12), "min_level": 1},
+    5: {"id": 105, "name": "🦂 Скорпион", "hp": 60, "reward_gold": (10, 30), "reward_honor": (3, 6), "reward_xp": (8, 20), "min_level": 2},
+    6: {"id": 106, "name": "🦟 Слепень", "hp": 12, "reward_gold": (1, 6), "reward_honor": (1, 1), "reward_xp": (1, 4), "min_level": 1},
+    7: {"id": 107, "name": "🐌 Улитка", "hp": 20, "reward_gold": (3, 10), "reward_honor": (1, 2), "reward_xp": (2, 6), "min_level": 1},
+    8: {"id": 108, "name": "🦗 Кузнечик", "hp": 30, "reward_gold": (5, 12), "reward_honor": (2, 3), "reward_xp": (4, 10), "min_level": 1}
+}
+
+SLIME_DAILY_LIMIT = 20
 
 # ========== ОРУЖИЕ ==========
 WEAPONS = {
@@ -76,6 +98,14 @@ RANKS = {
     5: {"name": "👑 Граф", "honor_needed": 1000},
     6: {"name": "⭐ Герцог", "honor_needed": 2000},
     7: {"name": "💀 Король", "honor_needed": 4000}
+}
+
+# ========== ИССЛЕДОВАНИЯ (УЛУЧШЕНИЯ) ==========
+UPGRADES = {
+    "Острота I": {"price": 200, "attack_bonus": 3, "min_level": 2},
+    "Острота II": {"price": 500, "attack_bonus": 5, "min_level": 4},
+    "Стойкость I": {"price": 200, "defense_bonus": 3, "min_level": 2},
+    "Стойкость II": {"price": 500, "defense_bonus": 5, "min_level": 4}
 }
 
 # ========== ИНИЦИАЛИЗАЦИЯ ==========
@@ -112,6 +142,28 @@ def add_monster_kill_today(user_id, monster_id):
     conn.commit()
     conn.close()
 
+def get_slime_kills_today(user_id, slime_id):
+    conn = sqlite3.connect('kingdom.db')
+    c = conn.cursor()
+    today = datetime.now().strftime('%Y-%m-%d')
+    c.execute('SELECT COUNT(*) FROM slime_kills_daily WHERE user_id = ? AND slime_id = ? AND date = ?', 
+              (user_id, slime_id, today))
+    count = c.fetchone()[0]
+    conn.close()
+    return count
+
+def add_slime_kill_today(user_id, slime_id):
+    conn = sqlite3.connect('kingdom.db')
+    c = conn.cursor()
+    today = datetime.now().strftime('%Y-%m-%d')
+    c.execute('''INSERT INTO slime_kills_daily (user_id, slime_id, date, count) 
+                 VALUES (?, ?, ?, 1)
+                 ON CONFLICT(user_id, slime_id, date) 
+                 DO UPDATE SET count = count + 1''', 
+              (user_id, slime_id, today))
+    conn.commit()
+    conn.close()
+
 # ========== БАЗА ДАННЫХ ==========
 def init_db():
     conn = sqlite3.connect('kingdom.db')
@@ -130,7 +182,9 @@ def init_db():
                   daily_bonus TEXT,
                   last_work TEXT,
                   join_date TEXT,
-                  referrer_id INTEGER DEFAULT 0)''')
+                  referrer_id INTEGER DEFAULT 0,
+                  character_class INTEGER DEFAULT 0,
+                  upgrades TEXT DEFAULT "[]")''')
     
     c.execute('''CREATE TABLE IF NOT EXISTS monster_hp
                  (monster_id INTEGER PRIMARY KEY,
@@ -150,10 +204,20 @@ def init_db():
                   count INTEGER DEFAULT 1,
                   PRIMARY KEY (user_id, monster_id, date))''')
     
+    c.execute('''CREATE TABLE IF NOT EXISTS slime_kills_daily
+                 (user_id INTEGER,
+                  slime_id INTEGER,
+                  date TEXT,
+                  count INTEGER DEFAULT 1,
+                  PRIMARY KEY (user_id, slime_id, date))''')
+    
     conn.commit()
     
     for monster_id, monster in MONSTERS.items():
         c.execute('INSERT OR IGNORE INTO monster_hp (monster_id, current_hp) VALUES (?, ?)', (monster_id, monster['hp']))
+    
+    for slime_id, slime in SLIME_MONSTERS.items():
+        c.execute('INSERT OR IGNORE INTO monster_hp (monster_id, current_hp) VALUES (?, ?)', (slime_id, slime['hp']))
     
     conn.commit()
     conn.close()
@@ -192,9 +256,9 @@ def register_user(user_id, referrer_id=None):
         name = get_user_name(user_id)
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         c.execute('INSERT INTO heroes (user_id, name, join_date, weapon_inventory, referrer_id) VALUES (?, ?, ?, ?, ?)',
-                  (user_id, name, now, '{"1":1}', referrer_id or 0))
+                  (user_id, name, now, '{}', referrer_id or 0))
         conn.commit()
-        print(f"✅ Новый герой: {name}")
+        print(f"✅ Новый герой ожидает выбора класса: {name}")
     conn.close()
 
 def get_hero_stats(user_id):
@@ -205,13 +269,19 @@ def get_hero_stats(user_id):
     conn.close()
     
     if result:
-        if len(result) >= 13:
+        columns = ['user_id', 'name', 'gold', 'honor', 'level', 'xp', 'weapon_inventory', 
+                   'monster_kills', 'is_admin_hidden', 'daily_bonus', 'last_work', 'join_date', 
+                   'referrer_id', 'character_class', 'upgrades']
+        if len(result) >= 15:
+            return dict(zip(columns, result))
+        elif len(result) >= 13:
             return {
                 'user_id': result[0], 'name': result[1], 'gold': result[2],
                 'honor': result[3], 'level': result[4], 'xp': result[5],
                 'weapon_inventory': result[6], 'monster_kills': result[7],
                 'is_admin_hidden': result[8], 'daily_bonus': result[9],
-                'last_work': result[10], 'join_date': result[11], 'referrer_id': result[12]
+                'last_work': result[10], 'join_date': result[11], 'referrer_id': result[12],
+                'character_class': 0, 'upgrades': '[]'
             }
         else:
             return {
@@ -220,7 +290,8 @@ def get_hero_stats(user_id):
                 'weapon_inventory': result[6], 'monster_kills': result[7],
                 'is_admin_hidden': 0, 'daily_bonus': None,
                 'last_work': None, 'join_date': result[8] if len(result) > 8 else None,
-                'referrer_id': result[9] if len(result) > 9 else 0
+                'referrer_id': result[9] if len(result) > 9 else 0,
+                'character_class': 0, 'upgrades': '[]'
             }
     return None
 
@@ -277,7 +348,7 @@ def get_monster_hp(monster_id):
     c.execute('SELECT current_hp FROM monster_hp WHERE monster_id = ?', (monster_id,))
     result = c.fetchone()
     conn.close()
-    return result[0] if result else MONSTERS[monster_id]['hp']
+    return result[0] if result else 100
 
 def update_monster_hp(monster_id, new_hp):
     conn = sqlite3.connect('kingdom.db')
@@ -287,9 +358,15 @@ def update_monster_hp(monster_id, new_hp):
     conn.close()
 
 def reset_monster_hp(monster_id):
+    if monster_id in MONSTERS:
+        hp = MONSTERS[monster_id]['hp']
+    elif monster_id in SLIME_MONSTERS:
+        hp = SLIME_MONSTERS[monster_id]['hp']
+    else:
+        hp = 100
     conn = sqlite3.connect('kingdom.db')
     c = conn.cursor()
-    c.execute('UPDATE monster_hp SET current_hp = ? WHERE monster_id = ?', (MONSTERS[monster_id]['hp'], monster_id))
+    c.execute('UPDATE monster_hp SET current_hp = ? WHERE monster_id = ?', (hp, monster_id))
     conn.commit()
     conn.close()
 
@@ -313,9 +390,9 @@ def save_user_weapons(user_id, weapons):
     conn.commit()
     conn.close()
 
-def add_weapon_to_inventory(user_id, weapon_id):
+def add_weapon_to_inventory(user_id, weapon_id, count=1):
     weapons = get_user_weapons(user_id)
-    weapons[str(weapon_id)] = weapons.get(str(weapon_id), 0) + 1
+    weapons[str(weapon_id)] = weapons.get(str(weapon_id), 0) + count
     save_user_weapons(user_id, weapons)
 
 def remove_weapon_from_inventory(user_id, weapon_id):
@@ -328,6 +405,51 @@ def remove_weapon_from_inventory(user_id, weapon_id):
         save_user_weapons(user_id, weapons)
         return True
     return False
+
+# ========== ФУНКЦИИ КЛАССОВ И УЛУЧШЕНИЙ ==========
+def get_user_class(user_id):
+    stats = get_hero_stats(user_id)
+    if stats and stats.get('character_class', 0) != 0:
+        return CLASSES.get(stats['character_class'])
+    return None
+
+def get_user_upgrades(user_id):
+    stats = get_hero_stats(user_id)
+    if stats and stats.get('upgrades'):
+        try:
+            return json.loads(stats['upgrades'])
+        except:
+            return []
+    return []
+
+def add_upgrade(user_id, upgrade_name):
+    upgrades = get_user_upgrades(user_id)
+    if upgrade_name not in upgrades:
+        upgrades.append(upgrade_name)
+        conn = sqlite3.connect('kingdom.db')
+        c = conn.cursor()
+        c.execute('UPDATE heroes SET upgrades = ? WHERE user_id = ?', (json.dumps(upgrades), user_id))
+        conn.commit()
+        conn.close()
+        return True
+    return False
+
+def get_upgrade_bonuses(user_id):
+    upgrades = get_user_upgrades(user_id)
+    attack_bonus = 0
+    defense_bonus = 0
+    for upgrade in upgrades:
+        if upgrade in UPGRADES:
+            attack_bonus += UPGRADES[upgrade].get('attack_bonus', 0)
+            defense_bonus += UPGRADES[upgrade].get('defense_bonus', 0)
+    return attack_bonus, defense_bonus
+
+def get_class_bonus_stats(user_id):
+    """Возвращает бонусы от класса: attack, defense"""
+    character_class = get_user_class(user_id)
+    if character_class:
+        return character_class['attack'], character_class['defense']
+    return 0, 0
 
 # ========== КЛАВИАТУРЫ ==========
 def create_main_keyboard():
@@ -344,14 +466,51 @@ def create_main_keyboard():
     keyboard.add_button("🍺 Трактир", color=VkKeyboardColor.POSITIVE)
     keyboard.add_button("👥 Поход", color=VkKeyboardColor.PRIMARY)
     keyboard.add_line()
+    keyboard.add_button("🏹 Быстрая охота", color=VkKeyboardColor.POSITIVE)
+    keyboard.add_button("🔬 Улучшения", color=VkKeyboardColor.PRIMARY)
+    keyboard.add_line()
     keyboard.add_button("❓ Помощь", color=VkKeyboardColor.SECONDARY)
+    return keyboard
+
+def create_class_selection_keyboard():
+    keyboard = VkKeyboard(one_time=False)
+    keyboard.add_button("⚔️ Воин", color=VkKeyboardColor.POSITIVE)
+    keyboard.add_button("🏹 Лучник", color=VkKeyboardColor.POSITIVE)
+    keyboard.add_line()
+    keyboard.add_button("🔮 Маг", color=VkKeyboardColor.POSITIVE)
+    keyboard.add_button("🗡️ Ассасин", color=VkKeyboardColor.POSITIVE)
     return keyboard
 
 def create_monster_keyboard():
     keyboard = VkKeyboard(one_time=False)
-    for monster_id, monster in MONSTERS.items():
-        keyboard.add_button(f"{monster['name']}", color=VkKeyboardColor.SECONDARY)
-        keyboard.add_line()
+    keyboard.add_button("🐜 Муравей", color=VkKeyboardColor.SECONDARY)
+    keyboard.add_button("🐛 Гусеница", color=VkKeyboardColor.SECONDARY)
+    keyboard.add_line()
+    keyboard.add_button("🐀 Крыса", color=VkKeyboardColor.SECONDARY)
+    keyboard.add_button("🕷️ Паук", color=VkKeyboardColor.SECONDARY)
+    keyboard.add_line()
+    keyboard.add_button("🦂 Скорпион", color=VkKeyboardColor.SECONDARY)
+    keyboard.add_button("🦟 Слепень", color=VkKeyboardColor.SECONDARY)
+    keyboard.add_line()
+    keyboard.add_button("🐌 Улитка", color=VkKeyboardColor.SECONDARY)
+    keyboard.add_button("🦗 Кузнечик", color=VkKeyboardColor.SECONDARY)
+    keyboard.add_line()
+    keyboard.add_button("🐗 Дикий вепрь", color=VkKeyboardColor.NEGATIVE)
+    keyboard.add_line()
+    keyboard.add_button("🌿 Леший", color=VkKeyboardColor.NEGATIVE)
+    keyboard.add_line()
+    keyboard.add_button("🗿 Каменный голем", color=VkKeyboardColor.NEGATIVE)
+    keyboard.add_line()
+    keyboard.add_button("🐉 Огненный дракон", color=VkKeyboardColor.NEGATIVE)
+    keyboard.add_line()
+    keyboard.add_button("👑 Король-лич", color=VkKeyboardColor.NEGATIVE)
+    keyboard.add_line()
+    keyboard.add_button("🦇 Повелитель тьмы", color=VkKeyboardColor.NEGATIVE)
+    keyboard.add_line()
+    keyboard.add_button("⚔️ Древний воин", color=VkKeyboardColor.NEGATIVE)
+    keyboard.add_line()
+    keyboard.add_button("💀 Властелин зла", color=VkKeyboardColor.NEGATIVE)
+    keyboard.add_line()
     keyboard.add_button("◀️ Назад", color=VkKeyboardColor.SECONDARY)
     return keyboard
 
@@ -423,9 +582,23 @@ def create_back_keyboard():
     keyboard.add_button("◀️ Вернуться в бой", color=VkKeyboardColor.SECONDARY)
     return keyboard
 
+def create_upgrades_keyboard():
+    keyboard = VkKeyboard(one_time=False)
+    for upgrade_name, upgrade in UPGRADES.items():
+        keyboard.add_button(f"{upgrade_name} ({upgrade['price']}💰)", color=VkKeyboardColor.PRIMARY)
+        keyboard.add_line()
+    keyboard.add_button("◀️ Назад", color=VkKeyboardColor.SECONDARY)
+    return keyboard
+
 # ========== ОСНОВНЫЕ КОМАНДЫ ==========
 def handle_start(user_id, referrer_id=None):
     register_user(user_id, referrer_id)
+    stats = get_hero_stats(user_id)
+    
+    if stats and stats.get('character_class', 0) == 0:
+        handle_class_selection(user_id)
+        return
+    
     send_message(user_id, 
         "⚔️ ДОБРО ПОЖАЛОВАТЬ В КОРОЛЕВСТВО! ⚔️\n\n"
         "📜 Личное дело - твоё досье\n"
@@ -435,28 +608,109 @@ def handle_start(user_id, referrer_id=None):
         "📦 Сундук - твоё снаряжение\n"
         "🏆 Рейтинг - топ воинов\n"
         "🍺 Трактир - халявное золото (раз в 6ч)\n"
-        "👥 Поход - рейды с братвой\n\n"
+        "👥 Поход - рейды с братвой\n"
+        "🏹 Быстрая охота - авто-бой со слабыми врагами\n"
+        "🔬 Улучшения - навсегда повышают характеристики\n\n"
         "👉 ЖМИ ПО КНОПКАМ, ВОИН! 👈",
         create_main_keyboard())
+
+def handle_class_selection(user_id):
+    stats = get_hero_stats(user_id)
+    if not stats:
+        handle_start(user_id)
+        return
+    
+    if stats.get('character_class', 0) != 0:
+        send_message(user_id, "Ты уже выбрал свой путь, воин!", create_main_keyboard())
+        return
+    
+    message = """🎭 ВЫБЕРИ СВОЙ ПУТЬ, ВОИН! 🎭
+
+Каждый класс даёт уникальные стартовые бонусы:
+
+⚔️ ВОИН - Мастер ближнего боя
+   → +15 к атаке
+   → +8 к защите
+   → Начальное оружие: 2 кинжала
+
+🏹 ЛУЧНИК - Меткий стрелок
+   → +20 к атаке
+   → +5 к защите
+   → Начальное оружие: 2 кинжала
+
+🔮 МАГ - Властитель стихий
+   → +22 к атаке
+   → +4 к защите
+   → Начальное оружие: 2 кинжала
+
+🗡️ АССАСИН - Ловкий хитрец
+   → +25 к атаке
+   → +3 к защите
+   → Начальное оружие: 2 кинжала
+
+👉 Нажми на класс, чтобы начать игру!"""
+    
+    send_message(user_id, message, create_class_selection_keyboard())
+    user_states[user_id] = {'state': 'selecting_class'}
+
+def apply_class_bonus(user_id, class_id):
+    class_data = CLASSES[class_id]
+    
+    conn = sqlite3.connect('kingdom.db')
+    c = conn.cursor()
+    c.execute('UPDATE heroes SET character_class = ? WHERE user_id = ?', (class_id, user_id))
+    conn.commit()
+    conn.close()
+    
+    add_weapon_to_inventory(user_id, class_data['start_weapon'], class_data['start_weapon_count'])
+    
+    class_info = CLASSES[class_id]
+    message = f"""✅ ТЫ ВЫБРАЛ {class_info['emoji']} {class_info['name']}!
+
+🎁 СТАРТОВЫЕ БОНУСЫ:
+   🗡️ Атака: +{class_info['attack']}
+   🛡️ Защита: +{class_info['defense']}
+   📦 В сундуке: {class_info['start_weapon_count']} кинжала
+
+⚔️ ДОБРО ПОЖАЛОВАТЬ В КОРОЛЕВСТВО!"""
+    
+    send_message(user_id, message, create_main_keyboard())
 
 def handle_profile(user_id):
     stats = get_hero_stats(user_id)
     if not stats:
         handle_start(user_id)
         return
+    
     rank_name = get_rank_name(stats['honor'])
+    character_class = get_user_class(user_id)
+    class_name = character_class['name'] if character_class else "❌ Не выбран"
+    class_emoji = character_class['emoji'] if character_class else "❓"
+    
+    class_attack, class_defense = get_class_bonus_stats(user_id)
+    upgrade_attack, upgrade_defense = get_upgrade_bonuses(user_id)
+    
+    total_attack_bonus = class_attack + upgrade_attack
+    total_defense_bonus = class_defense + upgrade_defense
+    
     try:
         kills = json.loads(stats['monster_kills']) if stats['monster_kills'] else []
     except:
         kills = []
+    
     message = f"""📜 ЛИЧНОЕ ДЕЛО
 
 👤 {stats['name']}
+{class_emoji} Класс: {class_name}
 ⭐ {rank_name}
 📊 Уровень {stats['level']} (XP: {stats['xp']}/{stats['level']*100})
 
 💰 Золота: {stats['gold']}
 👑 Честь: {stats['honor']}
+
+📈 БОНУСЫ:
+   🗡️ Атака: +{total_attack_bonus}
+   🛡️ Защита: +{total_defense_bonus}
 
 ⚔️ Монстров побеждено: {len(kills)}/{len(MONSTERS)}
 
@@ -481,24 +735,37 @@ def handle_monster_list(user_id):
     if not stats:
         handle_start(user_id)
         return
+    
     for raid_code, raid in active_raids.items():
         if user_id in raid.get('players', {}):
             send_message(user_id, f"❌ Ты уже в походе {raid_code}!\nСначала заверши его.", create_main_keyboard())
             return
-    message = "⚔️ НА КОГО ОХОТИМСЯ?\n\n"
+    
+    message = "🐜 ЛЕГКИЕ ВРАГИ (убиваются быстро):\n\n"
+    for slime_id, slime in SLIME_MONSTERS.items():
+        current_hp = get_monster_hp(slime_id)
+        req = "✅" if stats['level'] >= slime['min_level'] else f"🔒 УР.{slime['min_level']}"
+        kills_today = get_slime_kills_today(user_id, slime_id)
+        message += f"{slime['name']} {req}\n"
+        message += f"❤️ {current_hp}/{slime['hp']} HP\n"
+        message += f"💰 {slime['reward_gold'][0]}-{slime['reward_gold'][1]} | 👑 +{slime['reward_honor'][0]}-{slime['reward_honor'][1]}\n"
+        message += f"📅 Сегодня: {kills_today}/{SLIME_DAILY_LIMIT}\n\n"
+    
+    message += "━━━━━━━━━━━━━━━━━━━━━━\n\n"
+    message += "⚔️ ОПАСНЫЕ МОНСТРЫ:\n\n"
+    
     for monster_id, monster in MONSTERS.items():
         current_hp = get_monster_hp(monster_id)
         if MONSTER_LEVEL_REQUIRED and stats['level'] < monster['min_level']:
             req = f"🔒 УР.{monster['min_level']}"
         else:
             req = "✅"
-        filled = int((current_hp / monster['hp']) * 10)
-        bar = "█" * filled + "░" * (10 - filled)
         kills_today = get_monster_kills_today(user_id, monster_id)
         message += f"{monster['name']} {req}\n"
-        message += f"❤️ [{bar}] {current_hp}/{monster['hp']}\n"
+        message += f"❤️ {current_hp}/{monster['hp']} HP\n"
         message += f"💰 {monster['reward_gold'][0]}-{monster['reward_gold'][1]} | 👑 +{monster['reward_honor'][0]}-{monster['reward_honor'][1]}\n"
         message += f"📅 Сегодня: {kills_today}/{BOSS_DAILY_LIMIT}\n\n"
+    
     send_message(user_id, message, create_monster_keyboard())
 
 def handle_monster_selection(user_id, monster_name):
@@ -506,61 +773,105 @@ def handle_monster_selection(user_id, monster_name):
     if not stats:
         handle_start(user_id)
         return
+    
     for raid_code, raid in active_raids.items():
         if user_id in raid.get('players', {}):
             send_message(user_id, f"❌ Ты уже в походе {raid_code}!\nСначала заверши его.", create_main_keyboard())
             return
+    
     monster_data = None
     monster_id = None
-    for mid, mdata in MONSTERS.items():
-        if mdata['name'] in monster_name:
-            monster_id = mid
-            monster_data = mdata
+    is_slime = False
+    
+    for sid, sdata in SLIME_MONSTERS.items():
+        if sdata['name'] in monster_name:
+            monster_id = sid
+            monster_data = sdata
+            is_slime = True
             break
+    
     if not monster_data:
-        send_message(user_id, "❌ Такого монстра нет!", create_main_keyboard())
+        for mid, mdata in MONSTERS.items():
+            if mdata['name'] in monster_name:
+                monster_id = mid
+                monster_data = mdata
+                break
+    
+    if not monster_data:
+        send_message(user_id, "❌ Такого врага нет!", create_main_keyboard())
         return
     
-    if MONSTER_LEVEL_REQUIRED and stats['level'] < monster_data['min_level']:
+    if stats['level'] < monster_data['min_level']:
         send_message(user_id, f"❌ Нужен {monster_data['min_level']} уровень!", create_main_keyboard())
         return
     
     user_states[user_id] = {'state': 'fighting', 'monster_id': monster_id, 'monster_name': monster_data['name']}
     current_hp = get_monster_hp(monster_id)
-    kills_today = get_monster_kills_today(user_id, monster_id)
-    remaining = BOSS_DAILY_LIMIT - kills_today
+    
+    if is_slime:
+        kills_today = get_slime_kills_today(user_id, monster_id)
+        remaining = SLIME_DAILY_LIMIT - kills_today
+        extra_note = "\n💡 Отличная возможность для быстрого фарма!"
+    else:
+        kills_today = get_monster_kills_today(user_id, monster_id)
+        remaining = BOSS_DAILY_LIMIT - kills_today
+        extra_note = ""
+    
     message = f"⚔️ БИТВА С {monster_data['name']} ⚔️\n\n"
     message += f"❤️ ХП: {current_hp}/{monster_data['hp']}\n"
-    message += f"📅 Сегодня можно победить: {remaining}/{BOSS_DAILY_LIMIT}\n\n"
+    message += f"📅 Сегодня можно победить: {remaining}\n"
+    message += f"{extra_note}\n\n"
     message += "Чем атакуем?"
     send_message(user_id, message, create_fight_keyboard())
+
+def get_calculated_damage(user_id, weapon_data, stats):
+    class_attack, class_defense = get_class_bonus_stats(user_id)
+    upgrade_attack, upgrade_defense = get_upgrade_bonuses(user_id)
+    
+    total_attack_bonus = class_attack + upgrade_attack
+    damage = weapon_data['damage'] + stats['level'] * 2 + total_attack_bonus
+    return damage
 
 def handle_fight(user_id, weapon_name):
     state = user_states.get(user_id, {})
     if state.get('state') != 'fighting':
         return False
+    
     if "Отступить" in weapon_name:
         del user_states[user_id]
         send_message(user_id, "🏳️ Ты отступил с поля боя!", create_main_keyboard())
         return True
+    
     if "Назад" in weapon_name:
         del user_states[user_id]
         handle_monster_list(user_id)
         return True
+    
     if "Статистика боя" in weapon_name:
         monster_id = state['monster_id']
         monster_name = state['monster_name']
         current_hp = get_monster_hp(monster_id)
-        monster_data = MONSTERS[monster_id]
+        if monster_id in MONSTERS:
+            monster_data = MONSTERS[monster_id]
+        else:
+            monster_data = SLIME_MONSTERS[monster_id]
         message = f"📊 СТАТИСТИКА БОЯ\n\n"
         message += f"🐉 Противник: {monster_name}\n"
         message += f"❤️ ХП: {current_hp}/{monster_data['hp']}\n"
         message += f"📊 Прогресс: {((monster_data['hp'] - current_hp) / monster_data['hp'] * 100):.1f}%\n"
         send_message(user_id, message, create_fight_keyboard())
         return True
+    
     monster_id = state['monster_id']
     monster_name = state['monster_name']
-    monster_data = MONSTERS[monster_id]
+    
+    if monster_id in MONSTERS:
+        monster_data = MONSTERS[monster_id]
+        is_slime = False
+    else:
+        monster_data = SLIME_MONSTERS[monster_id]
+        is_slime = True
+    
     weapon_data = None
     weapon_id = None
     for wid, wdata in WEAPONS.items():
@@ -568,6 +879,7 @@ def handle_fight(user_id, weapon_name):
             weapon_id = wid
             weapon_data = wdata
             break
+    
     if not weapon_data:
         if "Кулак" in weapon_name:
             weapon_id = 1
@@ -587,25 +899,37 @@ def handle_fight(user_id, weapon_name):
         else:
             send_message(user_id, "❌ Выбери оружие!", create_fight_keyboard())
             return True
+    
     stats = get_hero_stats(user_id)
     current_hp = get_monster_hp(monster_id)
+    
     if current_hp <= 0:
-        send_message(user_id, "❌ Монстр уже повержен!", create_main_keyboard())
+        send_message(user_id, "❌ Враг уже повержен!", create_main_keyboard())
         del user_states[user_id]
         return True
-    will_kill = (current_hp - (weapon_data['damage'] + stats['level'] * 2)) <= 0
-    if will_kill:
+    
+    if is_slime:
+        kills_today = get_slime_kills_today(user_id, monster_id)
+        remaining = SLIME_DAILY_LIMIT - kills_today
+    else:
         kills_today = get_monster_kills_today(user_id, monster_id)
-        if kills_today >= BOSS_DAILY_LIMIT:
+        remaining = BOSS_DAILY_LIMIT - kills_today
+    
+    will_kill = (current_hp - get_calculated_damage(user_id, weapon_data, stats)) <= 0
+    if will_kill and remaining <= 0:
+        if is_slime:
+            send_message(user_id, f"⚠️ Ты уже убил {SLIME_DAILY_LIMIT} слабых врагов сегодня!\nЛимит на день исчерпан. Возвращайся завтра!", create_main_keyboard())
+        else:
             send_message(user_id, f"⚠️ Ты уже победил {BOSS_DAILY_LIMIT} раз {monster_name} сегодня!\nЛимит на день исчерпан. Возвращайся завтра!", create_main_keyboard())
-            del user_states[user_id]
-            return True
+        del user_states[user_id]
+        return True
+    
     if weapon_data['price'] == 0:
         if user_id in last_free_weapon_use:
             last = last_free_weapon_use[user_id]
             if datetime.now() - last < timedelta(seconds=FREE_WEAPON_COOLDOWN):
-                remaining = FREE_WEAPON_COOLDOWN - (datetime.now() - last).seconds
-                send_message(user_id, f"⏱️ Кулак через {remaining} сек", create_fight_keyboard())
+                remaining_time = FREE_WEAPON_COOLDOWN - (datetime.now() - last).seconds
+                send_message(user_id, f"⏱️ Кулак через {remaining_time} сек", create_fight_keyboard())
                 return True
         last_free_weapon_use[user_id] = datetime.now()
     else:
@@ -614,10 +938,13 @@ def handle_fight(user_id, weapon_name):
             send_message(user_id, f"❌ Нет {weapon_data['name']}!", create_fight_keyboard())
             return True
         remove_weapon_from_inventory(user_id, weapon_id)
-    damage = weapon_data['damage'] + stats['level'] * 2
-    crit = random.randint(1, 100) <= weapon_data['crit_chance']
+    
+    damage = get_calculated_damage(user_id, weapon_data, stats)
+    crit_chance = weapon_data['crit_chance']
+    crit = random.randint(1, 100) <= crit_chance
     if crit:
         damage = damage * 2
+    
     new_hp = current_hp - damage
     if new_hp <= 0:
         new_hp = 0
@@ -625,44 +952,53 @@ def handle_fight(user_id, weapon_name):
         gold_reward = random.randint(monster_data['reward_gold'][0], monster_data['reward_gold'][1])
         honor_reward = random.randint(monster_data['reward_honor'][0], monster_data['reward_honor'][1])
         xp_reward = random.randint(monster_data['reward_xp'][0], monster_data['reward_xp'][1])
+        
         add_gold(user_id, gold_reward)
         add_honor(user_id, honor_reward)
         add_xp(user_id, xp_reward)
-        add_monster_kill_today(user_id, monster_id)
-        kills_today = get_monster_kills_today(user_id, monster_id)
-        try:
-            kills = json.loads(stats['monster_kills']) if stats['monster_kills'] else []
-        except:
-            kills = []
-        if monster_id not in kills:
-            kills.append(monster_id)
-            conn = sqlite3.connect('kingdom.db')
-            c = conn.cursor()
-            c.execute('UPDATE heroes SET monster_kills = ? WHERE user_id = ?', (json.dumps(kills), user_id))
-            conn.commit()
-            conn.close()
+        
+        if is_slime:
+            add_slime_kill_today(user_id, monster_id)
+            kills_today = get_slime_kills_today(user_id, monster_id)
+            daily_limit = SLIME_DAILY_LIMIT
+        else:
+            add_monster_kill_today(user_id, monster_id)
+            kills_today = get_monster_kills_today(user_id, monster_id)
+            try:
+                kills = json.loads(stats['monster_kills']) if stats['monster_kills'] else []
+            except:
+                kills = []
+            if monster_id not in kills:
+                kills.append(monster_id)
+                conn = sqlite3.connect('kingdom.db')
+                c = conn.cursor()
+                c.execute('UPDATE heroes SET monster_kills = ? WHERE user_id = ?', (json.dumps(kills), user_id))
+                conn.commit()
+                conn.close()
+            daily_limit = BOSS_DAILY_LIMIT
+        
         reset_monster_hp(monster_id)
         del user_states[user_id]
         crit_text = " 💥КРИТ💥" if crit else ""
+        
         message = f"⚔️ ПОБЕДА НАД {monster_name}! ⚔️\n\n"
         message += f"💥 Урон: {damage}{crit_text}\n"
         message += f"💰 +{gold_reward} золота\n"
         message += f"👑 +{honor_reward} чести\n"
         message += f"📊 +{xp_reward} XP\n"
-        message += f"🏆 Всего побед: {len(kills)}/{len(MONSTERS)}\n"
-        message += f"📅 Сегодня побеждено {monster_name}: {kills_today}/{BOSS_DAILY_LIMIT}\n\n"
+        if not is_slime:
+            message += f"🏆 Всего побед: {len(kills)}/{len(MONSTERS)}\n"
+        message += f"📅 Сегодня побеждено: {kills_today}/{daily_limit}\n\n"
         message += "💡 Совет: Королевский меч можно купить с 1 уровня у Торговца!"
         send_message(user_id, message, create_main_keyboard())
     else:
         update_monster_hp(monster_id, new_hp)
         crit_text = " 💥КРИТ💥" if crit else ""
-        kills_today = get_monster_kills_today(user_id, monster_id)
-        remaining = BOSS_DAILY_LIMIT - kills_today
         message = f"⚔️ АТАКУЕМ!\n\n"
         message += f"🔫 {weapon_data['emoji']} {weapon_data['name']}\n"
         message += f"💥 Урон: {damage}{crit_text}\n"
         message += f"❤️ ХП: {current_hp} → {new_hp}\n"
-        message += f"📅 Сегодня можно победить {monster_name}: {remaining}/{BOSS_DAILY_LIMIT}\n\n"
+        message += f"📅 Сегодня можно победить: {remaining - 1 if will_kill else remaining}\n\n"
         message += "💡 Совет: Купи сильное оружие у Торговца (доступно с 1 уровня!)"
         send_message(user_id, message, create_fight_keyboard())
     return True
@@ -672,31 +1008,43 @@ def handle_work(user_id):
     if not stats:
         handle_start(user_id)
         return
+    
     if user_id in last_work_time:
         last = last_work_time[user_id]
         if datetime.now() - last < timedelta(seconds=WORK_COOLDOWN):
             remaining = WORK_COOLDOWN - (datetime.now() - last).seconds
             send_message(user_id, f"⏱️ Работа через {remaining} сек", create_main_keyboard())
             return
+    
     available_jobs = []
     for job_id, job in JOBS.items():
         if stats['level'] >= job['min_level']:
             available_jobs.append(job)
+    
     if not available_jobs:
         send_message(user_id, "❌ Низкий уровень!", create_main_keyboard())
         return
+    
     best_job = max(available_jobs, key=lambda x: x['earn'])
     earnings = best_job['earn'] + random.randint(-50, 50)
     earnings = max(50, earnings)
     add_gold(user_id, earnings)
     last_work_time[user_id] = datetime.now()
-    send_message(user_id, f"💼 {best_job['name']}\n💰 +{earnings} золота!", create_main_keyboard())
+    
+    class_bonus = get_class_bonus_stats(user_id)[0]
+    if class_bonus > 0:
+        bonus = earnings // 10
+        add_gold(user_id, bonus)
+        send_message(user_id, f"💼 {best_job['name']}\n💰 +{earnings} золота (+{bonus} бонус за класс!)", create_main_keyboard())
+    else:
+        send_message(user_id, f"💼 {best_job['name']}\n💰 +{earnings} золота!", create_main_keyboard())
 
 def handle_shop(user_id):
     stats = get_hero_stats(user_id)
     if not stats:
         handle_start(user_id)
         return
+    
     message = f"🏪 ТОРГОВЕЦ\n💰 Золота: {stats['gold']}\n\n"
     for weapon_id, weapon in WEAPONS.items():
         if weapon['price'] > 0:
@@ -726,8 +1074,6 @@ def handle_buy_weapon(user_id, weapon_choice):
     weapon_data = WEAPONS[weapon_id]
     stats = get_hero_stats(user_id)
     
-    # Проверка уровня для покупки оружия - УДАЛЕНА! Можно покупать с 1 уровня
-    
     if stats['gold'] < weapon_data['price']:
         send_message(user_id, f"❌ Не хватает! Нужно {weapon_data['price']}💰\n💰 У тебя: {stats['gold']}💰\n\n💡 Как заработать:\n• Работа 💼 — каждую минуту\n• Трактир 🍺 — раз в 6 часов\n• Охота на монстров ⚔️ — основная награда", create_main_keyboard())
         if user_id in user_states:
@@ -746,7 +1092,7 @@ def handle_ranking(user_id):
     conn = sqlite3.connect('kingdom.db')
     c = conn.cursor()
     message = "🏆 РЕЙТИНГ ВОИНОВ 🏆\n\n"
-    c.execute('SELECT user_id, name, level, honor FROM heroes WHERE is_admin_hidden = 0 ORDER BY honor DESC, level DESC LIMIT 15')
+    c.execute('SELECT user_id, name, level, honor FROM heroes WHERE is_admin_hidden = 0 ORDER BY level DESC, honor DESC LIMIT 10')
     top = c.fetchall()
     for i, (uid, name, level, honor) in enumerate(top, 1):
         medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else "📌"
@@ -762,6 +1108,7 @@ def handle_daily_bonus(user_id):
     if not stats:
         handle_start(user_id)
         return
+    
     conn = sqlite3.connect('kingdom.db')
     c = conn.cursor()
     c.execute('SELECT daily_bonus FROM heroes WHERE user_id = ?', (user_id,))
@@ -778,6 +1125,7 @@ def handle_daily_bonus(user_id):
                 return
         except:
             pass
+    
     bonus = 500 + stats['level'] * 50
     add_gold(user_id, bonus)
     c.execute('UPDATE heroes SET daily_bonus = ? WHERE user_id = ?', (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), user_id))
@@ -785,12 +1133,123 @@ def handle_daily_bonus(user_id):
     conn.close()
     send_message(user_id, f"🍺 ТРАКТИР!\n💰 +{bonus} золота!\n\n💡 Зайди к Торговцу и купи сильное оружие!", create_main_keyboard())
 
-# ========== ФУНКЦИИ РЕЙДОВ (ПОХОДОВ) ==========
+def handle_upgrades_menu(user_id):
+    stats = get_hero_stats(user_id)
+    if not stats:
+        handle_start(user_id)
+        return
+    
+    user_upgrades = get_user_upgrades(user_id)
+    attack_bonus, defense_bonus = get_upgrade_bonuses(user_id)
+    class_attack, class_defense = get_class_bonus_stats(user_id)
+    
+    message = f"🔬 ЛАБОРАТОРИЯ УЛУЧШЕНИЙ 🔬\n\n"
+    message += f"💰 Твоё золото: {stats['gold']}\n"
+    message += f"📊 Текущие бонусы:\n"
+    message += f"   🗡️ От класса: +{class_attack} атаки\n"
+    message += f"   🛡️ От класса: +{class_defense} защиты\n"
+    message += f"   🔧 От улучшений: +{attack_bonus} атаки, +{defense_bonus} защиты\n\n"
+    message += "Доступные улучшения:\n\n"
+    
+    for upgrade_name, upgrade in UPGRADES.items():
+        if upgrade_name in user_upgrades:
+            message += f"✅ {upgrade_name} — ИЗУЧЕНО\n"
+        else:
+            if stats['level'] >= upgrade['min_level']:
+                message += f"📖 {upgrade_name}\n"
+                message += f"   💰 {upgrade['price']}💰 | 🗡️ +{upgrade.get('attack_bonus', 0)} атаки | 🛡️ +{upgrade.get('defense_bonus', 0)} защиты\n"
+                message += f"   📊 Требуется уровень: {upgrade['min_level']}\n\n"
+            else:
+                message += f"🔒 {upgrade_name} — УР.{upgrade['min_level']}\n\n"
+    
+    send_message(user_id, message, create_upgrades_keyboard())
+    user_states[user_id] = {'state': 'upgrades_menu'}
+
+def handle_buy_upgrade(user_id, upgrade_name):
+    if upgrade_name not in UPGRADES:
+        send_message(user_id, "❌ Такое улучшение не найдено!", create_main_keyboard())
+        return
+    
+    upgrade = UPGRADES[upgrade_name]
+    stats = get_hero_stats(user_id)
+    user_upgrades = get_user_upgrades(user_id)
+    
+    if upgrade_name in user_upgrades:
+        send_message(user_id, f"❌ {upgrade_name} уже изучено!", create_upgrades_keyboard())
+        return
+    
+    if stats['level'] < upgrade['min_level']:
+        send_message(user_id, f"❌ Нужен {upgrade['min_level']} уровень!", create_upgrades_keyboard())
+        return
+    
+    if stats['gold'] < upgrade['price']:
+        send_message(user_id, f"❌ Не хватает! Нужно {upgrade['price']}💰", create_upgrades_keyboard())
+        return
+    
+    add_gold(user_id, -upgrade['price'])
+    add_upgrade(user_id, upgrade_name)
+    
+    attack_bonus = upgrade.get('attack_bonus', 0)
+    defense_bonus = upgrade.get('defense_bonus', 0)
+    message = f"✅ ИЗУЧЕНО {upgrade_name}!\n"
+    message += f"💰 Потрачено: {upgrade['price']}💰\n"
+    if attack_bonus > 0:
+        message += f"🗡️ Атака увеличена на +{attack_bonus}!\n"
+    if defense_bonus > 0:
+        message += f"🛡️ Защита увеличена на +{defense_bonus}!"
+    
+    send_message(user_id, message, create_upgrades_keyboard())
+
+def handle_quick_hunt(user_id):
+    stats = get_hero_stats(user_id)
+    if not stats:
+        handle_start(user_id)
+        return
+    
+    available_slimes = []
+    for slime_id, slime in SLIME_MONSTERS.items():
+        kills_today = get_slime_kills_today(user_id, slime_id)
+        if kills_today < SLIME_DAILY_LIMIT and stats['level'] >= slime['min_level']:
+            available_slimes.append(slime_id)
+    
+    if not available_slimes:
+        send_message(user_id, "❌ Сегодня ты уже убил всех доступных слабых врагов!\nПодожди до завтра или иди на сложных монстров.", create_main_keyboard())
+        return
+    
+    slime_id = random.choice(available_slimes)
+    slime_data = SLIME_MONSTERS[slime_id]
+    
+    gold_reward = random.randint(slime_data['reward_gold'][0], slime_data['reward_gold'][1])
+    honor_reward = random.randint(slime_data['reward_honor'][0], slime_data['reward_honor'][1])
+    xp_reward = random.randint(slime_data['reward_xp'][0], slime_data['reward_xp'][1])
+    
+    add_gold(user_id, gold_reward)
+    add_honor(user_id, honor_reward)
+    add_xp(user_id, xp_reward)
+    add_slime_kill_today(user_id, slime_id)
+    kills_today = get_slime_kills_today(user_id, slime_id)
+    reset_monster_hp(slime_id)
+    
+    class_attack, _ = get_class_bonus_stats(user_id)
+    attack_bonus_text = f" (+{class_attack} от класса)" if class_attack > 0 else ""
+    
+    message = f"🏹 БЫСТРАЯ ОХОТА!\n\n"
+    message += f"Ты нашёл и убил {slime_data['name']}!\n"
+    message += f"🗡️ Твой урон: {class_attack + 5}{attack_bonus_text}\n"
+    message += f"💰 +{gold_reward} золота\n"
+    message += f"👑 +{honor_reward} чести\n"
+    message += f"📊 +{xp_reward} XP\n"
+    message += f"📅 Сегодня убито слабых врагов: {kills_today}/{SLIME_DAILY_LIMIT}"
+    
+    send_message(user_id, message, create_main_keyboard())
+
+# ========== ФУНКЦИИ РЕЙДОВ ==========
 def handle_raid(user_id):
     stats = get_hero_stats(user_id)
     if not stats:
         handle_start(user_id)
         return
+    
     for raid_code, raid in active_raids.items():
         if user_id in raid.get('players', {}):
             elapsed = datetime.now() - raid['start_time']
@@ -805,6 +1264,7 @@ def handle_raid(user_id):
             user_states[user_id] = {'state': 'raid_attacking', 'raid_code': raid_code}
             send_message(user_id, message, create_fight_keyboard())
             return
+    
     if user_id in user_raid_temp:
         raid_id = user_raid_temp[user_id]
         if raid_id in active_raids:
@@ -821,8 +1281,9 @@ def handle_raid(user_id):
             send_message(user_id, message, create_raid_keyboard())
             user_states[user_id] = {'state': 'raid_menu'}
             return
+    
     message = "👥 ПОХОД 👥\n\n"
-    message += "⚔️ Создать поход - выбрать монстра\n"
+    message += "⚔️ Создать поход - выбрать монстра (только из сильных)\n"
     message += "🔍 Ввести ID - подключиться или вернуться\n"
     message += "📊 Статистика похода - посмотреть активные походы\n\n"
     message += "👉 Выбери действие"
@@ -834,6 +1295,7 @@ def handle_raid_create(user_id):
     if not stats:
         handle_start(user_id)
         return
+    
     message = "⚔️ ВЫБЕРИ ЦЕЛЬ ДЛЯ ПОХОДА ⚔️\n\n"
     for monster_id, monster in MONSTERS.items():
         if stats['level'] >= monster['min_level']:
@@ -846,18 +1308,20 @@ def handle_raid_create_monster(user_id, text):
     try:
         monster_id = int(text)
         if monster_id not in MONSTERS:
-            send_message(user_id, "❌ Неверно!", create_main_keyboard())
+            send_message(user_id, "❌ Неверно! Можно создавать походы только на сильных монстров.", create_main_keyboard())
             del user_states[user_id]
             return
     except:
         send_message(user_id, "❌ Напиши номер!", create_main_keyboard())
         del user_states[user_id]
         return
+    
     stats = get_hero_stats(user_id)
     if stats['level'] < MONSTERS[monster_id]['min_level']:
         send_message(user_id, f"❌ Нужен {MONSTERS[monster_id]['min_level']} уровень!", create_main_keyboard())
         del user_states[user_id]
         return
+    
     raid_id = str(random.randint(100000, 999999))
     active_raids[raid_id] = {
         'monster_id': monster_id,
@@ -873,7 +1337,7 @@ def handle_raid_create_monster(user_id, text):
     message = f"⚔️ ПОХОД СОЗДАН! ⚔️\n\n"
     message += f"🐉 Цель: {MONSTERS[monster_id]['name']}\n"
     message += f"🔢 ID: {raid_id}\n\n"
-    message += f"📝 Братва подключается: !поход {raid_id}\n\n"
+    message += f"📝 Игроки подключаются: !поход {raid_id}\n\n"
     message += f"👥 Участников: 1\n"
     message += f"❤️ ХП: {MONSTERS[monster_id]['hp']}\n"
     message += f"⏰ Время на поход: {time_limit} часов\n\n"
@@ -883,14 +1347,12 @@ def handle_raid_create_monster(user_id, text):
 
 def handle_raid_join(user_id, raid_id):
     raid_id = str(raid_id).strip()
-    print(f"🔗 ПОДКЛЮЧЕНИЕ К ПОХОДУ: user={user_id}, raid_id={raid_id}")
     
     if raid_id not in active_raids:
         send_message(user_id, "❌ Поход не найден!\nПроверь ID.", create_main_keyboard())
         return
     
     raid = active_raids[raid_id]
-    
     elapsed = datetime.now() - raid['start_time']
     if elapsed > timedelta(hours=raid['time_limit_hours']):
         send_message(user_id, "❌ Время похода истекло!", create_main_keyboard())
@@ -930,7 +1392,6 @@ def handle_raid_join(user_id, raid_id):
         return
     
     raid['players'][user_id] = 0
-    
     user_states[user_id] = {'state': 'raid_attacking', 'raid_code': raid_id}
     
     message = f"⚔️ ТЫ В ПОХОДЕ! ⚔️\n\n"
@@ -948,11 +1409,13 @@ def handle_raid_stats(user_id):
     if not active_raids:
         send_message(user_id, "❌ Нет активных походов!", create_main_keyboard())
         return
+    
     user_raid = None
     for raid_id, raid in active_raids.items():
         if user_id in raid.get('players', {}):
             user_raid = raid
             break
+    
     if user_raid:
         elapsed = datetime.now() - user_raid['start_time']
         remaining_hours = user_raid['time_limit_hours'] - elapsed.total_seconds() / 3600
@@ -990,6 +1453,7 @@ def handle_shop_in_raid(user_id):
     if not stats:
         handle_start(user_id)
         return
+    
     message = f"🏪 ТОРГОВЕЦ (Прямо во время боя!)\n💰 Золота: {stats['gold']}\n\n"
     message += "2. 🗡️ Кинжал - 1000💰 (урон +15, крит 30%)\n"
     message += "3. ⚔️ Длинный меч - 5000💰 (урон +35, крит 35%)\n"
@@ -1016,18 +1480,19 @@ def handle_buy_weapon_in_raid(user_id, weapon_choice):
         send_message(user_id, "❌ Напиши номер оружия: 2, 3, 4 или 5", create_fight_keyboard())
         del user_states[user_id]
         return
+    
     weapon_data = WEAPONS[weapon_id]
     stats = get_hero_stats(user_id)
     raid_code = user_states[user_id].get('raid_code')
     
-    # Проверка уровня для покупки оружия - УДАЛЕНА! Можно покупать с 1 уровня
-    
     if stats['gold'] < weapon_data['price']:
-        send_message(user_id, f"❌ Не хватает! Нужно {weapon_data['price']}💰\n💰 У тебя: {stats['gold']}💰\n\n💡 Как заработать:\n• Работа 💼 — каждую минуту\n• Трактир 🍺 — раз в 6 часов\n• Охота на монстров ⚔️ — основная награда", create_fight_keyboard())
+        send_message(user_id, f"❌ Не хватает! Нужно {weapon_data['price']}💰\n💰 У тебя: {stats['gold']}💰", create_fight_keyboard())
         del user_states[user_id]
         return
+    
     add_weapon_to_inventory(user_id, weapon_id)
     add_gold(user_id, -weapon_data['price'])
+    
     if raid_code and raid_code in active_raids:
         raid = active_raids[raid_code]
         remaining = raid['time_limit_hours'] - (datetime.now() - raid['start_time']).total_seconds() / 3600
@@ -1073,7 +1538,7 @@ def handle_raid_attack(user_id, weapon_text):
     
     total_damage_dealt = sum(raid['players'].values())
     if total_damage_dealt == 0 and user_id != raid['creator']:
-        send_message(user_id, f"⚠️ Первый удар по {raid['monster_name']} должен нанести создатель похода!\n👑 Создатель: {get_user_name(raid['creator'])}\n\nДождись, пока он начнёт битву, потом подключайся!", create_fight_keyboard())
+        send_message(user_id, f"⚠️ Первый удар по {raid['monster_name']} должен нанести создатель похода!", create_fight_keyboard())
         return True
     
     if user_id not in raid['players']:
@@ -1115,7 +1580,7 @@ def handle_raid_attack(user_id, weapon_text):
     elif "Королевский меч" in weapon_text:
         weapon_id = 5
     else:
-        send_message(user_id, "❌ Выбери оружие: 👊 Кулак, 🗡️ Кинжал, ⚔️ Длинный меч, 🏹 Арбалет, 👑 Королевский меч", create_fight_keyboard())
+        send_message(user_id, "❌ Выбери оружие!", create_fight_keyboard())
         return True
     
     weapon_data = WEAPONS[weapon_id]
@@ -1147,12 +1612,11 @@ def handle_raid_attack(user_id, weapon_text):
                 return True
         last_free_weapon_use[user_id] = datetime.now()
     
-    damage = weapon_data['damage'] + stats['level'] * 2
+    damage = get_calculated_damage(user_id, weapon_data, stats)
     crit = random.randint(1, 100) <= weapon_data['crit_chance']
     if crit:
         damage = damage * 2
     
-    old_hp = raid['monster_current_hp']
     raid['monster_current_hp'] -= damage
     raid['players'][user_id] = raid['players'].get(user_id, 0) + damage
     
@@ -1160,7 +1624,6 @@ def handle_raid_attack(user_id, weapon_text):
     
     if raid['monster_current_hp'] <= 0:
         raid['monster_current_hp'] = 0
-        
         monster_data = MONSTERS[raid['monster_id']]
         base_gold = random.randint(monster_data['reward_gold'][0], monster_data['reward_gold'][1])
         base_honor = random.randint(monster_data['reward_honor'][0], monster_data['reward_honor'][1])
@@ -1218,33 +1681,30 @@ def handle_help(user_id):
     message = """⚔️ КОРОЛЕВСТВО - ПОМОЩЬ ⚔️
 
 📜 Личное дело - твоё досье
-⚔️ Охота - соло битва с монстром
+⚔️ Охота - битва с монстрами
 💼 Работа - фармим золото
 🏪 Торговец - купить оружие (доступно с 1 уровня!)
 📦 Сундук - твоё снаряжение
 🏆 Рейтинг - топ воинов
 🍺 Трактир - халявное золото (раз в 6ч)
 👥 Поход - рейд с братвой
+🏹 Быстрая охота - авто-бой со слабыми врагами
+🔬 Улучшения - навсегда повышают атаку и защиту
 
 🔢 КАК СОБРАТЬ ПОХОД:
 1. Нажми "👥 Поход" → "Создать поход"
 2. Выбери цель → получи ID
-3. Братва подключается: !поход ID
-4. Если вышел - вернись по кнопке 'Ввести ID'
+3. Друзья подключаются: !поход ID
 
 💡 В походе:
 - Урон всех суммируется
 - ТОП урона получает бонус
 - Создатель получает бонус
-- Кнопка 'К торговцу' - купить оружие не выходя из боя
 
 📅 ЛИМИТЫ:
-- Каждого монстра можно победить 6 раз в день
-- Лимиты сбрасываются в 00:00
+- Сильных монстров: 6 раз в день
+- Слабых врагов: 20 раз в день
 - Команда !лимиты показывает прогресс
-
-👥 УЧАСТНИКОВ В ПОХОДЕ:
-- Безлимит!
 
 👉 ВСЁ УПРАВЛЕНИЕ ПО КНОПКАМ!"""
     send_message(user_id, message, create_main_keyboard())
@@ -1254,7 +1714,7 @@ def handle_admin_panel(user_id):
     if not is_admin(user_id):
         send_message(user_id, "⛔ Доступ запрещён", create_main_keyboard())
         return
-    # Очищаем старое состояние
+    
     if user_id in user_states:
         del user_states[user_id]
     send_message(user_id, "🔐 АДМИН-ПАНЕЛЬ КОРОЛЕВСТВА", create_admin_keyboard())
@@ -1263,19 +1723,25 @@ def handle_admin_panel(user_id):
 def handle_admin_max(user_id):
     if not is_admin(user_id):
         return
+    
     conn = sqlite3.connect('kingdom.db')
     c = conn.cursor()
     c.execute("PRAGMA table_info(heroes)")
     columns = [col[1] for col in c.fetchall()]
     if 'is_admin_hidden' not in columns:
         c.execute('ALTER TABLE heroes ADD COLUMN is_admin_hidden INTEGER DEFAULT 0')
-    c.execute('UPDATE heroes SET gold = 1000000, honor = 5000, level = 50, xp = 0 WHERE user_id = ?', (user_id,))
+    
+    c.execute('UPDATE heroes SET gold = 1000000, honor = 5000, level = 50, xp = 0, character_class = 1 WHERE user_id = ?', (user_id,))
     weapons_inv = {"1": 1, "2": 99, "3": 99, "4": 99, "5": 99}
     c.execute('UPDATE heroes SET weapon_inventory = ? WHERE user_id = ?', (json.dumps(weapons_inv), user_id))
     c.execute('UPDATE heroes SET is_admin_hidden = 1 WHERE user_id = ?', (user_id,))
+    
+    all_upgrades = list(UPGRADES.keys())
+    c.execute('UPDATE heroes SET upgrades = ? WHERE user_id = ?', (json.dumps(all_upgrades), user_id))
+    
     conn.commit()
     conn.close()
-    send_message(user_id, "✅ АДМИН ПРОКАЧАН!\n💰 Золото: 1,000,000\n👑 Честь: 5000\n📊 Уровень: 50\n📦 Всё оружие в сундуке\n⭐ Скрыт из рейтинга!", create_admin_keyboard())
+    send_message(user_id, "✅ АДМИН ПРОКАЧАН!\n💰 Золото: 1,000,000\n👑 Честь: 5000\n📊 Уровень: 50\n📦 Всё оружие в сундуке\n🔬 Все улучшения изучены\n⭐ Скрыт из рейтинга!", create_admin_keyboard())
 
 def handle_admin_give_gold(user_id):
     if not is_admin(user_id):
@@ -1309,6 +1775,7 @@ def handle_admin_upgrade_level(user_id):
 def handle_admin_smart_stats(user_id):
     if not is_admin(user_id):
         return
+    
     conn = sqlite3.connect('kingdom.db')
     c = conn.cursor()
     c.execute('SELECT COUNT(*) FROM heroes')
@@ -1326,22 +1793,13 @@ def handle_admin_smart_stats(user_id):
     c.execute('SELECT name, honor FROM heroes ORDER BY honor DESC LIMIT 5')
     top_honor = c.fetchall()
     active_raids_count = len(active_raids)
-    c.execute("SELECT monster_kills FROM heroes WHERE monster_kills IS NOT NULL AND monster_kills != '[]'")
-    all_kills = c.fetchall()
-    total_monster_kills = 0
-    for row in all_kills:
-        try:
-            kills = json.loads(row[0])
-            total_monster_kills += len(kills)
-        except:
-            pass
     conn.close()
+    
     message = f"📊 УМНАЯ СТАТИСТИКА КОРОЛЕВСТВА 📊\n\n"
     message += f"👥 Всего игроков: {total_players}\n"
     message += f"💰 Всего золота: {total_gold:,}\n"
     message += f"👑 Всего чести: {total_honor:,}\n"
     message += f"📊 Средний уровень: {avg_level:.1f}\n"
-    message += f"⚔️ Побеждено монстров: {total_monster_kills}\n"
     message += f"👥 Активных походов: {active_raids_count}\n\n"
     message += f"💰 БОГАТЕЙШИЕ:\n"
     for i, (name, gold) in enumerate(top_gold, 1):
@@ -1357,22 +1815,27 @@ def handle_admin_smart_stats(user_id):
 def handle_admin_players_list(user_id, page=0):
     if not is_admin(user_id):
         return
+    
     conn = sqlite3.connect('kingdom.db')
     c = conn.cursor()
     c.execute('SELECT user_id, name, gold, honor, level FROM heroes ORDER BY level DESC, honor DESC')
     players = c.fetchall()
     conn.close()
+    
     items_per_page = 15
     start = page * items_per_page
     end = start + items_per_page
     page_players = players[start:end]
+    
     if not page_players:
         send_message(user_id, "❌ Нет игроков на этой странице", create_admin_keyboard())
         return
+    
     total_pages = (len(players) + items_per_page - 1) // items_per_page
     message = f"👥 СПИСОК ГЕРОЕВ (стр.{page+1}/{total_pages})\n\n"
     for uid, name, gold, honor, level in page_players:
         message += f"📌 {name}\n   💰{gold:,} | 👑{honor} | УР.{level}\n   🆔 {uid}\n\n"
+    
     keyboard = VkKeyboard(one_time=False)
     if page > 0:
         keyboard.add_button("◀️ Предыдущая", color=VkKeyboardColor.PRIMARY)
@@ -1389,24 +1852,28 @@ def handle_reset_all_monsters(user_id):
         return
     for monster_id in MONSTERS:
         reset_monster_hp(monster_id)
-    send_message(user_id, "✅ ВСЕ МОНСТРЫ ВОСКРЕСЛИ!", create_admin_keyboard())
+    for slime_id in SLIME_MONSTERS:
+        reset_monster_hp(slime_id)
+    send_message(user_id, "✅ ВСЕ МОНСТРЫ И СЛАБЫЕ ВРАГИ ВОСКРЕСЛИ!", create_admin_keyboard())
 
 def handle_post_top(user_id):
     if not is_admin(user_id):
         return
+    
     conn = sqlite3.connect('kingdom.db')
     c = conn.cursor()
-    message = "🏆 ТОП-15 ВОИНОВ КОРОЛЕВСТВА 🏆\n\n"
-    c.execute('SELECT user_id, name, level, honor FROM heroes WHERE is_admin_hidden = 0 ORDER BY honor DESC, level DESC LIMIT 15')
+    message = "🏆 ТОП-10 ВОИНОВ КОРОЛЕВСТВА 🏆\n\n"
+    c.execute('SELECT user_id, name, level, honor FROM heroes WHERE is_admin_hidden = 0 ORDER BY level DESC, honor DESC LIMIT 10')
     top = c.fetchall()
     for i, (uid, name, level, honor) in enumerate(top, 1):
         medal = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else "📌"
         mention = get_user_mention(uid)
         message += f"{medal} {i}. {mention}\n   УР.{level} | 👑{honor}\n\n"
     conn.close()
+    
     try:
         vk.wall.post(owner_id=-GROUP_ID, message=message, from_group=1)
-        send_message(user_id, "✅ ТОП-15 опубликован в сообществе!", create_admin_keyboard())
+        send_message(user_id, "✅ ТОП-10 опубликован в сообществе!", create_admin_keyboard())
     except Exception as e:
         send_message(user_id, f"❌ Ошибка публикации: {e}", create_admin_keyboard())
 
@@ -1419,6 +1886,7 @@ def handle_clear_db(user_id):
 def handle_clear_db_confirm(user_id, text):
     if not is_admin(user_id):
         return False
+    
     if text.upper() == "ДА":
         conn = sqlite3.connect('kingdom.db')
         c = conn.cursor()
@@ -1426,13 +1894,19 @@ def handle_clear_db_confirm(user_id, text):
         c.execute('DELETE FROM monster_hp')
         c.execute('DELETE FROM raid_logs')
         c.execute('DELETE FROM monster_kills_daily')
+        c.execute('DELETE FROM slime_kills_daily')
         conn.commit()
         conn.close()
+        
         for monster_id, monster in MONSTERS.items():
             reset_monster_hp(monster_id)
+        for slime_id, slime in SLIME_MONSTERS.items():
+            reset_monster_hp(slime_id)
+        
         send_message(user_id, "✅ ВСЯ СТАТИСТИКА ОЧИЩЕНА!", create_admin_keyboard())
     else:
         send_message(user_id, "❌ ОТМЕНЕНО!", create_admin_keyboard())
+    
     if user_id in user_states:
         del user_states[user_id]
     return True
@@ -1440,7 +1914,9 @@ def handle_clear_db_confirm(user_id, text):
 def execute_admin_action(user_id, text):
     if not is_admin(user_id):
         return False
+    
     state = user_states.get(user_id, {}).get('state')
+    
     if state == 'admin_give_gold':
         parts = text.split()
         if len(parts) >= 2:
@@ -1456,6 +1932,7 @@ def execute_admin_action(user_id, text):
         if user_id in user_states:
             del user_states[user_id]
         return True
+    
     elif state == 'admin_give_honor':
         parts = text.split()
         if len(parts) >= 2:
@@ -1471,6 +1948,7 @@ def execute_admin_action(user_id, text):
         if user_id in user_states:
             del user_states[user_id]
         return True
+    
     elif state == 'admin_give_weapon':
         parts = text.split()
         if len(parts) >= 2:
@@ -1489,6 +1967,7 @@ def execute_admin_action(user_id, text):
         if user_id in user_states:
             del user_states[user_id]
         return True
+    
     elif state == 'admin_upgrade_level':
         parts = text.split()
         if len(parts) >= 2:
@@ -1512,8 +1991,10 @@ def execute_admin_action(user_id, text):
         if user_id in user_states:
             del user_states[user_id]
         return True
+    
     elif state == 'admin_clear_confirm':
         return handle_clear_db_confirm(user_id, text)
+    
     return False
 
 # ========== ОСНОВНОЙ ЦИКЛ ==========
@@ -1570,11 +2051,20 @@ for event in longpoll.listen():
             if not stats:
                 handle_start(user_id)
                 continue
+            
             message = "📊 ТВОИ ЛИМИТЫ НА СЕГОДНЯ 📊\n\n"
+            message += "🐜 СЛАБЫЕ ВРАГИ:\n"
+            for slime_id, slime in SLIME_MONSTERS.items():
+                kills = get_slime_kills_today(user_id, slime_id)
+                remaining = SLIME_DAILY_LIMIT - kills
+                message += f"{slime['name']}: {kills}/{SLIME_DAILY_LIMIT} (осталось {remaining})\n"
+            
+            message += "\n⚔️ СИЛЬНЫЕ МОНСТРЫ:\n"
             for monster_id, monster in MONSTERS.items():
                 kills = get_monster_kills_today(user_id, monster_id)
                 remaining = BOSS_DAILY_LIMIT - kills
                 message += f"{monster['name']}: {kills}/{BOSS_DAILY_LIMIT} (осталось {remaining})\n"
+            
             send_message(user_id, message, create_main_keyboard())
             continue
         
@@ -1599,7 +2089,24 @@ for event in longpoll.listen():
         if user_id in user_states:
             state = user_states[user_id].get('state')
             
-            if state == 'buying':
+            if state == 'selecting_class':
+                if text == "⚔️ Воин":
+                    apply_class_bonus(user_id, 1)
+                    del user_states[user_id]
+                elif text == "🏹 Лучник":
+                    apply_class_bonus(user_id, 2)
+                    del user_states[user_id]
+                elif text == "🔮 Маг":
+                    apply_class_bonus(user_id, 3)
+                    del user_states[user_id]
+                elif text == "🗡️ Ассасин":
+                    apply_class_bonus(user_id, 4)
+                    del user_states[user_id]
+                else:
+                    send_message(user_id, "❌ Нажми на кнопку с классом!", create_class_selection_keyboard())
+                continue
+            
+            elif state == 'buying':
                 handle_buy_weapon(user_id, text)
                 continue
             elif state == 'fighting':
@@ -1644,6 +2151,12 @@ for event in longpoll.listen():
                         del user_states[user_id]
                 else:
                     handle_buy_weapon_in_raid(user_id, text)
+                continue
+            elif state == 'upgrades_menu':
+                if text == "◀️ Назад":
+                    handle_start(user_id)
+                else:
+                    handle_buy_upgrade(user_id, text)
                 continue
             elif state == 'admin':
                 if text == "💰 Выдать золото":
@@ -1705,11 +2218,15 @@ for event in longpoll.listen():
             handle_daily_bonus(user_id)
         elif text == "👥 Поход":
             handle_raid(user_id)
+        elif text == "🏹 Быстрая охота":
+            handle_quick_hunt(user_id)
+        elif text == "🔬 Улучшения":
+            handle_upgrades_menu(user_id)
         elif text == "❓ Помощь":
             handle_help(user_id)
         elif text == "◀️ Назад":
             handle_start(user_id)
-        elif any(monster['name'] in text for monster in MONSTERS.values()):
+        elif any(monster['name'] in text for monster in MONSTERS.values()) or any(slime['name'] in text for slime in SLIME_MONSTERS.values()):
             handle_monster_selection(user_id, text)
         else:
             conn = sqlite3.connect('kingdom.db')
